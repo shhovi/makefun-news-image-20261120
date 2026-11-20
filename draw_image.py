@@ -1,173 +1,181 @@
 #!/usr/bin/env python3
-"""Draw entry.png: one-day world news poster for Friday 20 November 2026.
+"""Poster for Friday 20 November 2026 — built at build time with Pillow.
 
-Build-time only (Pillow). The entered program is main.ts, which copies the
-finished entry.png to /output/entry.png with no network. All words are set
-here in code so the judge sees exact, legible text.
-Events (all reported 20 Nov 2026):
-  1. Ukraine strikes the Kerch (Crimea) Bridge a third time this week;
-     rail traffic halted, Putin vows a response.
-  2. Houthi missiles damage the PIF tower in Riyadh; four targets claimed.
-  3. Markets slide: S&P 500 down a fifth straight day; Taiwan plunges
-     more than 2,200 points intraday.
-  4. Kenya discharges its last Ebola patient, 37 days after the first case.
-  Ticker: US Senate rejects Iran war-powers resolution 51-48;
-          Herzog taps Eisenkot to form Israel's next government;
-          tanker burns after hitting a mine in the Strait of Hormuz.
+The day's four lead stories (all reported 20 Nov 2026):
+  * Ukraine struck the Kerch Bridge for the third time this week;
+    rail traffic stopped and Putin promised a response.
+  * Houthi missiles damaged the Public Investment Fund tower in
+    Riyadh; four targets were claimed.
+  * Stocks fell for a fifth straight session in the US while Taiwan's
+    index plunged more than 2,200 points intraday.
+  * Kenya discharged its last Ebola patient, 37 days after its
+    first case.
+Ticker items: the US Senate rejected an Iran war-powers resolution
+51-48; President Herzog asked Eisenkot to form Israel's next
+government; a tanker burned after hitting a mine in the Strait of
+Hormuz.
+
+The shipped program is main.ts; it copies the finished entry.png to
+/output at run time. Text is drawn here so every word stays exact.
 """
 from PIL import Image, ImageDraw, ImageFont
 
-W = H = 1024
-BG = (247, 243, 232)
-INK = (24, 28, 38)
-NAVY = (18, 42, 92)
-TEAL = (0, 110, 110)
-RED = (178, 34, 34)
-GREEN = (18, 120, 62)
-WHITE = (255, 255, 255)
-GREY = (70, 76, 90)
+SIZE = 1024
+PAPER = (250, 246, 236)
+CARD = (255, 255, 255)
+EDGE = (198, 194, 180)
+TEXT = (26, 30, 40)
+SUB = (74, 80, 94)
+BANNER = (16, 40, 88)
+GOLD = (255, 214, 90)
+CRIMSON = (176, 32, 32)
+FOREST = (16, 118, 60)
+SKY = (58, 128, 198)
+AMBER = (245, 160, 20)
+STEEL = (92, 100, 117)
+LAMP = (250, 215, 90)
 
-BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-REG = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-
-
-def font(path, size):
-    return ImageFont.truetype(path, size)
-
-
-def center_text(d, cx, y, text, fnt, fill):
-    box = d.textbbox((0, 0), text, font=fnt)
-    d.text((cx - (box[2] - box[0]) / 2, y), text, font=fnt, fill=fill)
-    return box[3] - box[1]
+FB = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FR = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 
-def draw_globe(d, cx, cy, r):
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(30, 110, 200), outline=WHITE, width=4)
-    d.ellipse([cx - r * 0.45, cy - r, cx + r * 0.45, cy + r], outline=WHITE, width=3)
-    d.line([cx - r, cy, cx + r, cy], fill=WHITE, width=3)
-    d.arc([cx - r, cy - r * 0.55, cx + r, cy + r * 0.55], 0, 180, fill=WHITE, width=3)
-    d.arc([cx - r, cy - r * 0.55, cx + r, cy + r * 0.55], 180, 360, fill=WHITE, width=3)
+def fnt(path, px):
+    return ImageFont.truetype(path, px)
 
 
-def icon_bridge(d, x, y):
-    # Suspension bridge over water with a blast star on the deck.
-    d.rectangle([x, y + 92, x + 150, y + 112], fill=(60, 130, 200))
-    for wx in (x + 16, x + 52, x + 88, x + 124):
-        d.arc([wx, y + 96, wx + 22, y + 110], 0, 180, fill=WHITE, width=3)
-    d.rectangle([x + 4, y + 66, x + 146, y + 76], fill=INK)
-    for px in (x + 34, x + 112):
-        d.rectangle([px, y + 10, px + 10, y + 92], fill=INK)
-    d.line([x + 8, y + 66, x + 39, y + 14], fill=INK, width=4)
-    d.line([x + 39, y + 14, x + 75, y + 52], fill=INK, width=4)
-    d.line([x + 75, y + 52, x + 117, y + 14], fill=INK, width=4)
-    d.line([x + 117, y + 14, x + 142, y + 66], fill=INK, width=4)
-    cx, cy = x + 75, y + 58
-    d.polygon(
-        [(cx, cy - 26), (cx + 7, cy - 8), (cx + 25, cy - 9), (cx + 11, cy + 3),
-         (cx + 17, cy + 21), (cx, cy + 11), (cx - 17, cy + 21), (cx - 11, cy + 3),
-         (cx - 25, cy - 9), (cx - 7, cy - 8)],
-        fill=(245, 160, 20), outline=RED,
-    )
+def shrink(draw, s, limit, start, path=FB):
+    px = start
+    while px > 18:
+        f = fnt(path, px)
+        if draw.textlength(s, font=f) <= limit:
+            return f
+        px -= 2
+    return fnt(path, px)
 
 
-def icon_tower(d, x, y):
-    # Skyscraper with a missile streaking in from the corner.
-    d.rectangle([x + 46, y + 18, x + 104, y + 112], fill=(90, 98, 115))
-    d.rectangle([x + 66, y + 4, x + 84, y + 18], fill=(90, 98, 115))
-    for wx in (x + 56, x + 74, x + 90):
-        for wy in (y + 30, y + 52, y + 74, y + 94):
-            d.rectangle([wx, wy, wx + 9, wy + 11], fill=(250, 215, 90))
-    d.line([x + 4, y + 8, x + 52, y + 44], fill=RED, width=6)
-    d.polygon([(x + 52, y + 44), (x + 40, y + 30), (x + 60, y + 28)], fill=RED)
-    d.ellipse([x + 44, y + 36, x + 68, y + 60], fill=(245, 160, 20), outline=RED, width=3)
+def centred(draw, cx, y, s, f, colour):
+    draw.text((cx - draw.textlength(s, font=f) / 2, y), s, font=f, fill=colour)
 
 
-def icon_chart_down(d, x, y):
-    d.line([x + 8, y + 104, x + 142, y + 104], fill=INK, width=5)
-    d.line([x + 8, y + 104, x + 8, y + 10], fill=INK, width=5)
-    pts = [(x + 16, y + 22), (x + 52, y + 44), (x + 84, y + 38), (x + 126, y + 86)]
-    d.line(pts, fill=RED, width=8, joint="curve")
-    d.polygon([(x + 126, y + 100), (x + 140, y + 78), (x + 116, y + 76)], fill=RED)
-    d.ellipse([x + 44, y + 36, x + 60, y + 52], fill=RED)
-    d.ellipse([x + 76, y + 30, x + 92, y + 46], fill=RED)
+def globe(draw, cx, cy, r):
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(30, 110, 200), outline=CARD, width=4)
+    draw.ellipse([cx - r * 0.45, cy - r, cx + r * 0.45, cy + r], outline=CARD, width=3)
+    draw.line([cx - r, cy, cx + r, cy], fill=CARD, width=3)
+    draw.arc([cx - r, cy - r * 0.55, cx + r, cy + r * 0.55], 0, 180, fill=CARD, width=3)
+    draw.arc([cx - r, cy - r * 0.55, cx + r, cy + r * 0.55], 180, 360, fill=CARD, width=3)
 
 
-def icon_cross(d, x, y):
-    # Medical cross in a ring: outbreak over, last patient discharged.
-    cx, cy, r = x + 75, y + 58, 48
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=WHITE, outline=GREEN, width=6)
-    d.rectangle([cx - 11, cy - 30, cx + 11, cy + 30], fill=GREEN)
-    d.rectangle([cx - 30, cy - 11, cx + 30, cy + 11], fill=GREEN)
-    d.arc([cx - r - 8, cy - r - 8, cx + r + 8, cy + r + 8], 300, 60, fill=GREEN, width=6)
+def glyph_bridge(draw, ox, oy):
+    draw.rectangle([ox, oy + 94, ox + 150, oy + 112], fill=SKY)
+    for wx in range(ox + 14, ox + 140, 36):
+        draw.arc([wx, oy + 97, wx + 22, oy + 110], 0, 180, fill=CARD, width=3)
+    draw.rectangle([ox + 4, oy + 68, ox + 146, oy + 77], fill=TEXT)
+    for tx in (ox + 34, ox + 112):
+        draw.rectangle([tx, oy + 10, tx + 10, oy + 94], fill=TEXT)
+    cable = [(ox + 6, oy + 68), (ox + 39, oy + 14), (ox + 75, oy + 52),
+             (ox + 117, oy + 14), (ox + 144, oy + 68)]
+    draw.line(cable, fill=TEXT, width=4, joint="curve")
+    bx, by = ox + 75, oy + 58
+    star = []
+    for i in range(10):
+        ang = -90 + i * 36
+        rad = 25 if i % 2 == 0 else 10
+        import math
+        star.append((bx + rad * math.cos(math.radians(ang)),
+                     by + rad * math.sin(math.radians(ang))))
+    draw.polygon(star, fill=AMBER, outline=CRIMSON)
 
 
-def fit_font(d, text, max_w, start, path=BOLD):
-    """Largest bold size at or below start whose text fits max_w pixels."""
-    size = start
-    while size > 18:
-        fnt = font(path, size)
-        box = d.textbbox((0, 0), text, font=fnt)
-        if box[2] - box[0] <= max_w:
-            return fnt
-        size -= 2
-    return font(path, size)
+def glyph_tower(draw, ox, oy):
+    draw.rectangle([ox + 48, oy + 20, ox + 104, oy + 112], fill=STEEL)
+    draw.rectangle([ox + 68, oy + 6, ox + 84, oy + 20], fill=STEEL)
+    for col in (ox + 57, ox + 74, ox + 90):
+        for row in (oy + 32, oy + 53, oy + 74, oy + 94):
+            draw.rectangle([col, row, col + 9, row + 11], fill=LAMP)
+    draw.line([ox + 2, oy + 6, ox + 50, oy + 42], fill=CRIMSON, width=6)
+    draw.polygon([(ox + 52, oy + 44), (ox + 38, oy + 30), (ox + 60, oy + 27)], fill=CRIMSON)
+    draw.ellipse([ox + 43, oy + 35, ox + 67, oy + 59], fill=AMBER, outline=CRIMSON, width=3)
 
 
-def panel(d, box, stripe, kicker, headline, lines, icon):
-    x0, y0, x1, y1 = box
-    inner = (x1 - x0) - 44
-    d.rounded_rectangle(box, radius=18, fill=WHITE, outline=(200, 196, 182), width=3)
-    d.rounded_rectangle([x0, y0, x1, y0 + 46], radius=18, fill=stripe)
-    d.rectangle([x0, y0 + 30, x1, y0 + 46], fill=stripe)
-    d.text((x0 + 22, y0 + 8), kicker, font=fit_font(d, kicker, inner, 27), fill=WHITE)
-    icon(d, x0 + 24, y0 + 58)
-    d.text((x0 + 22, y0 + 182), headline, font=fit_font(d, headline, inner, 38), fill=INK)
-    y = y0 + 232
-    for line in lines:
-        d.text((x0 + 22, y), line, font=fit_font(d, line, inner, 30, REG), fill=GREY)
-        y += 38
+def glyph_falling(draw, ox, oy):
+    draw.line([ox + 8, oy + 104, ox + 142, oy + 104], fill=TEXT, width=5)
+    draw.line([ox + 8, oy + 104, ox + 8, oy + 10], fill=TEXT, width=5)
+    path = [(ox + 16, oy + 22), (ox + 52, oy + 44), (ox + 84, oy + 38), (ox + 126, oy + 86)]
+    draw.line(path, fill=CRIMSON, width=8, joint="curve")
+    draw.polygon([(ox + 126, oy + 100), (ox + 140, oy + 78), (ox + 116, oy + 76)], fill=CRIMSON)
+    for cx, cy in ((ox + 52, oy + 44), (ox + 84, oy + 38)):
+        draw.ellipse([cx - 8, cy - 8, cx + 8, cy + 8], fill=CRIMSON)
 
 
-def main():
-    img = Image.new("RGB", (W, H), BG)
+def glyph_medical(draw, ox, oy):
+    cx, cy, r = ox + 75, oy + 58, 47
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=CARD, outline=FOREST, width=6)
+    draw.rectangle([cx - 11, cy - 30, cx + 11, cy + 30], fill=FOREST)
+    draw.rectangle([cx - 30, cy - 11, cx + 30, cy + 11], fill=FOREST)
+    draw.arc([cx - r - 9, cy - r - 9, cx + r + 9, cy + r + 9], 295, 65, fill=FOREST, width=6)
+
+
+STORIES = [
+    ("KERCH BRIDGE HIT AGAIN", CRIMSON, "3rd strike this week",
+     ["Ukraine hits Crimea bridge.", "Rail halted; Putin vows reply."], glyph_bridge),
+    ("RIYADH UNDER FIRE", BANNER, "PIF tower damaged",
+     ["Houthi missiles hit Riyadh.", "Four targets claimed."], glyph_tower),
+    ("MARKETS SLIDE", CRIMSON, "5th straight fall",
+     ["S&P down again; Asia sinks.", "Taiwan plunges 2,200+ pts."], glyph_falling),
+    ("EBOLA: LAST PATIENT OUT", FOREST, "Kenya clears outbreak",
+     ["Last patient discharged,", "37 days after first case."], glyph_medical),
+]
+
+
+def card(draw, rect, story):
+    kicker, band, headline, sublines, glyph = story
+    x0, y0, x1, y1 = rect
+    room = (x1 - x0) - 44
+    draw.rounded_rectangle(rect, radius=18, fill=CARD, outline=EDGE, width=3)
+    draw.rounded_rectangle([x0, y0, x1, y0 + 46], radius=18, fill=band)
+    draw.rectangle([x0, y0 + 30, x1, y0 + 46], fill=band)
+    draw.text((x0 + 22, y0 + 8), kicker, font=shrink(draw, kicker, room, 27), fill=CARD)
+    glyph(draw, x0 + 24, y0 + 58)
+    draw.text((x0 + 22, y0 + 182), headline,
+              font=shrink(draw, headline, room, 38), fill=TEXT)
+    yy = y0 + 232
+    for s in sublines:
+        draw.text((x0 + 22, yy), s, font=shrink(draw, s, room, 30, FR), fill=SUB)
+        yy += 38
+
+
+def build():
+    img = Image.new("RGB", (SIZE, SIZE), PAPER)
     d = ImageDraw.Draw(img)
 
-    # Header band: names the day, big enough to read at 300px.
-    d.rectangle([0, 0, W, 168], fill=NAVY)
-    draw_globe(d, 86, 84, 52)
-    center_text(d, 560, 18, "WORLD NEWS", font(BOLD, 74), WHITE)
-    center_text(d, 560, 102, "Friday  •  20 November 2026", font(BOLD, 42), (255, 214, 90))
-    # Thin gold rule under the header, echoing the date colour.
-    d.rectangle([0, 168, W, 174], fill=(255, 214, 90))
+    d.rectangle([0, 0, SIZE, 168], fill=BANNER)
+    globe(d, 86, 84, 52)
+    centred(d, 560, 18, "WORLD NEWS", fnt(FB, 74), CARD)
+    centred(d, 560, 102, "Friday  •  20 November 2026", fnt(FB, 42), GOLD)
+    d.rectangle([0, 168, SIZE, 174], fill=GOLD)
 
-    m, gap, top = 28, 16, 184
-    pw = (W - 2 * m - gap) // 2
+    margin, gap, top = 28, 16, 184
+    pw = (SIZE - 2 * margin - gap) // 2
     ph = 330
-    panel(d, [m, top, m + pw, top + ph], RED, "KERCH BRIDGE HIT AGAIN",
-          "3rd strike this week",
-          ["Ukraine hits Crimea bridge.", "Rail halted; Putin vows reply."], icon_bridge)
-    panel(d, [m + pw + gap, top, W - m, top + ph], NAVY, "RIYADH UNDER FIRE",
-          "PIF tower damaged",
-          ["Houthi missiles hit Riyadh.", "Four targets claimed."], icon_tower)
-    top2 = top + ph + gap
-    panel(d, [m, top2, m + pw, top2 + ph], RED, "MARKETS SLIDE",
-          "5th straight fall",
-          ["S&P down again; Asia sinks.", "Taiwan plunges 2,200+ pts."], icon_chart_down)
-    panel(d, [m + pw + gap, top2, W - m, top2 + ph], GREEN, "EBOLA: LAST PATIENT OUT",
-          "Kenya clears outbreak",
-          ["Last patient discharged,", "37 days after first case."], icon_cross)
+    spots = [
+        [margin, top, margin + pw, top + ph],
+        [margin + pw + gap, top, SIZE - margin, top + ph],
+        [margin, top + ph + gap, margin + pw, top + 2 * ph + gap],
+        [margin + pw + gap, top + ph + gap, SIZE - margin, top + 2 * ph + gap],
+    ]
+    for rect, story in zip(spots, STORIES):
+        card(d, rect, story)
 
-    # Footer ticker: three more of the day's stories, still legible.
-    fy = top2 + ph + gap
-    d.rounded_rectangle([m, fy, W - m, H - 24], radius=16, fill=INK)
-    line1 = "ALSO: Senate rejects Iran war-powers 51–48"
-    line2 = "Herzog taps Eisenkot  •  Hormuz tanker burns"
-    center_text(d, W // 2, fy + 14, line1, fit_font(d, line1, W - 2 * m - 40, 29), WHITE)
-    center_text(d, W // 2, fy + 58, line2, fit_font(d, line2, W - 2 * m - 40, 29), (255, 214, 90))
+    fy = top + 2 * ph + 2 * gap
+    d.rounded_rectangle([margin, fy, SIZE - margin, SIZE - 24], radius=16, fill=TEXT)
+    t1 = "ALSO: Senate rejects Iran war-powers 51–48"
+    t2 = "Herzog taps Eisenkot  •  Hormuz tanker burns"
+    centred(d, SIZE // 2, fy + 14, t1, shrink(d, t1, SIZE - 2 * margin - 40, 29), CARD)
+    centred(d, SIZE // 2, fy + 58, t2, shrink(d, t2, SIZE - 2 * margin - 40, 29), GOLD)
 
     img.save("entry.png", optimize=True)
     print("wrote entry.png", img.size)
 
 
 if __name__ == "__main__":
-    main()
+    build()

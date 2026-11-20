@@ -1,41 +1,41 @@
-// news-image-20261120 entry program (Node 22, standard library only).
+// news-image-20261120 — run-time half of the entry.
 //
-// The entry image is entry.png beside this file: a one-day world news
-// poster for Friday 20 November 2026, drawn at build time by
-// draw_image.py. At run time there is no network, so this program only
-// validates the image bytes and copies them to the output directory.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// entry.png (the 20 November 2026 world-news poster) is drawn at build
+// time by draw_image.py and committed beside this file. The grader runs
+// this program with no network: it checks the PNG header against the
+// gate limits (1024x1024, 1 MiB) and writes the bytes to the output
+// directory, /output unless MAKEFUN_OUTPUT_DIR says otherwise.
+//
+// Local check:  mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const MAX_BYTES = 1048576; // 1 MiB gate limit
-const MAX_DIM = 1024; // 1024 by 1024 gate limit
+const LIMIT_BYTES = 1024 * 1024;
+const LIMIT_EDGE = 1024;
 
-function pngSize(bytes) {
-  // PNG signature, then IHDR width/height as big-endian uint32 at 16/20.
-  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (bytes.length < 24 || !sig.every((b, i) => bytes[i] === b)) return null;
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+const here = dirname(fileURLToPath(import.meta.url));
+const source = join(here, 'entry.png');
+
+const { size } = statSync(source);
+if (size > LIMIT_BYTES) {
+  throw new Error(`entry.png weighs ${size} bytes; the gate allows ${LIMIT_BYTES}`);
 }
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const bytes = readFileSync(join(here, 'entry.png'));
-
-if (bytes.length > MAX_BYTES) {
-  throw new Error(`entry.png is ${bytes.length} bytes, over the 1 MiB gate limit`);
+const head = readFileSync(source).subarray(0, 24);
+const PNG_MAGIC = [137, 80, 78, 71, 13, 10, 26, 10];
+const isPng = PNG_MAGIC.every((byte, i) => head[i] === byte);
+if (!isPng) {
+  throw new Error('entry.png does not start with the PNG signature');
 }
-const size = pngSize(bytes);
-if (size === null) {
-  throw new Error('entry.png is not a PNG (bad signature)');
-}
-if (size.width > MAX_DIM || size.height > MAX_DIM) {
-  throw new Error(`entry.png is ${size.width}x${size.height}, over ${MAX_DIM}x${MAX_DIM}`);
+const width = head.readUInt32BE(16);
+const height = head.readUInt32BE(20);
+if (width > LIMIT_EDGE || height > LIMIT_EDGE) {
+  throw new Error(`entry.png is ${width}x${height}; the gate allows ${LIMIT_EDGE}x${LIMIT_EDGE}`);
 }
 
-const outDir = process.env.MAKEFUN_OUTPUT_DIR || '/output';
-mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, 'entry.png'), bytes);
-console.log(`entry.png ${size.width}x${size.height} ${bytes.length} bytes -> ${outDir}/entry.png`);
+const target = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+mkdirSync(target, { recursive: true });
+copyFileSync(source, join(target, 'entry.png'));
+console.log(`copied entry.png (${width}x${height}, ${size} bytes) to ${target}`);
